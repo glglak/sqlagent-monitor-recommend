@@ -22,22 +22,30 @@ namespace SqlMonitor.Controllers
             _aiQueryAnalysisService = aiQueryAnalysisService;
         }
 
-        [HttpGet("slow-queries")]
-        public async Task<ActionResult<IEnumerable<SlowQuery>>> GetSlowQueries(CancellationToken cancellationToken)
+        [HttpGet("slow-queries/current")]
+        public async Task<ActionResult<IEnumerable<SlowQuery>>> GetCurrentSlowQueries(CancellationToken cancellationToken)
         {
             var slowQueries = await _queryPerformanceService.GetSlowQueriesAsync(cancellationToken);
-            
-            // Generate optimization suggestions for each query
-            foreach (var query in slowQueries)
-            {
-                query.OptimizationSuggestions = await _queryPerformanceService.GenerateOptimizationSuggestionsAsync(query, cancellationToken);
-            }
-            
             return Ok(slowQueries);
         }
 
+        [HttpGet("slow-queries/history")]
+        public async Task<ActionResult<IEnumerable<SlowQueryHistory>>> GetSlowQueryHistory(
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate,
+            CancellationToken cancellationToken)
+        {
+            var history = await _queryPerformanceService.GetHistoricalSlowQueriesAsync(
+                startDate, 
+                endDate, 
+                cancellationToken);
+            return Ok(history);
+        }
+
         [HttpPost("analyze")]
-        public async Task<ActionResult<string>> AnalyzeQuery([FromBody] SlowQuery query, CancellationToken cancellationToken)
+        public async Task<ActionResult<string>> AnalyzeQuery(
+            [FromBody] SlowQuery query, 
+            CancellationToken cancellationToken)
         {
             var analysis = await _aiQueryAnalysisService.AnalyzeQueryAsync(query, cancellationToken);
             return Ok(new { Analysis = analysis });

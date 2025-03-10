@@ -1,7 +1,4 @@
-using System.Data;
-using System.Threading.Tasks;
-
-namespace SqlMonitor.Services
+namespace SqlMonitor.Interfaces
 {
     public interface ISqlConnectionFactory
     {

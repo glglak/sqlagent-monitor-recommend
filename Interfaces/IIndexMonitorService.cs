@@ -1,9 +1,4 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using SqlMonitor.Models;
-
-namespace SqlMonitor.Services
+namespace SqlMonitor.Interfaces
 {
     public interface IIndexMonitorService
     {
