@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SqlMonitor.Interfaces;
 using SqlMonitor.Models;
 
 namespace SqlMonitor.Services
@@ -80,7 +81,7 @@ namespace SqlMonitor.Services
                 .GetProperty("choices")[0]
                 .GetProperty("message")
                 .GetProperty("content")
-                .GetString();
+                .GetString() ?? "No analysis available";
         }
 
         private async Task<string> AnalyzeWithClaudeAsync(SlowQuery query, CancellationToken cancellationToken)
@@ -118,7 +119,7 @@ namespace SqlMonitor.Services
             return responseObject
                 .GetProperty("content")[0]
                 .GetProperty("text")
-                .GetString();
+                .GetString() ?? "No analysis available";
         }
 
         private string CreatePrompt(SlowQuery query)

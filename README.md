@@ -1,15 +1,15 @@
-# SQL Server Performance Monitor
+# SQL Server Monitor and Recommend
 
-A .NET 8 API-first solution for monitoring and optimizing SQL Server databases.
+A .NET 8 application that monitors SQL Server databases for performance issues, automatically reindexes fragmented indexes, and provides AI-powered recommendations for slow queries.
 
 ## Features
 
-- **Automatic Index Monitoring**: Detects fragmented indexes and performs automatic reindexing
-- **Slow Query Detection**: Identifies slow-running queries across monitored databases
-- **AI-Powered Query Analysis**: Uses Azure OpenAI or Claude to analyze and suggest optimizations for slow queries
-- **Historical Performance Tracking**: Stores performance data for trend analysis
-- **Notification System**: Alerts administrators about critical performance issues
-- **RESTful API**: Provides endpoints for monitoring and management
+- **Automatic Index Monitoring**: Detects and fixes fragmented indexes
+- **Slow Query Detection**: Identifies poorly performing queries
+- **AI-Powered Analysis**: Uses Azure OpenAI or Claude to analyze and recommend optimizations for slow queries
+- **Email Notifications**: Sends alerts for critical performance issues
+- **REST API**: Provides endpoints for monitoring and management
+- **Background Processing**: Runs monitoring tasks in the background
 
 ## Getting Started
 
@@ -17,7 +17,7 @@ A .NET 8 API-first solution for monitoring and optimizing SQL Server databases.
 
 - .NET 8 SDK
 - SQL Server (local or remote)
-- Azure OpenAI or Claude API access (for AI-powered query analysis)
+- Azure OpenAI API key (or Claude API key) for AI-powered recommendations
 
 ### Installation
 
@@ -27,56 +27,56 @@ A .NET 8 API-first solution for monitoring and optimizing SQL Server databases.
    cd sqlagent-monitor-recommend
    ```
 
-2. Create a development configuration file:
+2. Install required packages:
    ```
-   cp appsettings.Development.json appsettings.json
-   ```
-
-3. Update the connection strings and API keys in `appsettings.json`
-
-4. Create the monitoring database:
-   ```sql
-   CREATE DATABASE SqlMonitor;
+   dotnet restore
    ```
 
-5. Apply Entity Framework migrations:
+3. Update the connection strings in `appsettings.Development.json` to point to your SQL Server instance.
+
+4. Create the required databases:
    ```
-   dotnet ef migrations add InitialCreate
    dotnet ef database update
    ```
 
-6. Run the application:
+5. Run the application:
    ```
-   dotnet run
+   dotnet run --environment Development
    ```
 
 ### Configuration
 
-The application is configured through `appsettings.json`. Key settings include:
+The application is configured through `appsettings.json` and environment-specific files like `appsettings.Development.json`. Key configuration sections include:
 
 #### SQL Server Settings
+
 ```json
 "SqlServer": {
-  "ConnectionString": "Server=your_server;Database=SqlMonitor;User Id=your_username;Password=your_password;",
+  "ConnectionString": "Server=YourServer;Database=SqlMonitor;Trusted_Connection=True;",
   "MonitoringIntervalMinutes": 30,
   "SlowQueryThresholdMs": 1000,
   "IndexFragmentationThreshold": 30,
   "MonitoredDatabases": [
     {
       "Name": "Database1",
-      "ConnectionString": "Server=your_server;Database=Database1;User Id=your_username;Password=your_password;"
+      "ConnectionString": "Server=YourServer;Database=Database1;Trusted_Connection=True;"
+    },
+    {
+      "Name": "Database2",
+      "ConnectionString": "Server=YourServer;Database=Database2;Trusted_Connection=True;"
     }
   ]
 }
 ```
 
 #### AI Settings
+
 ```json
 "AI": {
   "Provider": "AzureOpenAI", // or "Claude"
   "ApiKey": "your-api-key",
-  "Endpoint": "https://your-resource.openai.azure.com/",
-  "DeploymentName": "gpt-4",
+  "Endpoint": "https://your-resource-name.openai.azure.com/",
+  "DeploymentName": "your-deployment-name",
   "ModelName": "gpt-4",
   "MaxTokens": 1000,
   "Temperature": 0.0
@@ -84,6 +84,7 @@ The application is configured through `appsettings.json`. Key settings include:
 ```
 
 #### Notification Settings
+
 ```json
 "Notifications": {
   "Email": {
@@ -107,67 +108,64 @@ The application is configured through `appsettings.json`. Key settings include:
 ### Index Monitoring
 
 - `GET /api/indexmonitor` - Get all fragmented indexes
-- `POST /api/{database}/{schema}/{table}/{index}/reindex` - Manually trigger reindexing
+- `POST /api/indexmonitor/{database}/{schema}/{table}/{index}/reindex` - Manually trigger reindexing
 
 ### Query Performance
 
 - `GET /api/queryperformance/slow-queries/current` - Get current slow queries
-- `GET /api/queryperformance/slow-queries/history` - Get historical slow queries
+- `GET /api/queryperformance/slow-queries/history?startDate={date}&endDate={date}` - Get historical slow queries
 - `POST /api/queryperformance/analyze` - Analyze a specific query with AI
 
 ## Architecture
 
-The solution follows a clean architecture approach:
+The application follows a clean architecture pattern with the following components:
 
-- **Interfaces**: Contains all service contracts
-- **Models**: Data models for the application
-- **Services**: Implementation of the service interfaces
-- **Controllers**: API endpoints
-- **BackgroundServices**: Long-running monitoring tasks
-- **Data**: Database context and migrations
+- **Models**: Data structures representing SQL Server objects and monitoring data
+- **Interfaces**: Abstractions for services
+- **Services**: Core business logic for monitoring and optimization
+- **Background Services**: Long-running tasks for periodic monitoring
+- **Controllers**: API endpoints for user interaction
+- **Data**: Database context for storing monitoring history
 
 ## How It Works
 
 ### Index Monitoring
 
 1. The `IndexMonitorBackgroundService` runs at configured intervals
-2. It uses `IIndexMonitorService` to detect fragmented indexes
-3. Indexes exceeding the fragmentation threshold are automatically reindexed
-4. All operations are logged and stored in the database
+2. It uses `IndexMonitorService` to scan for fragmented indexes
+3. When fragmentation exceeds the threshold, it automatically reindexes
+4. All operations are logged and can be viewed via the API
 
 ### Slow Query Detection
 
 1. The `QueryPerformanceBackgroundService` runs at configured intervals
-2. It uses `IQueryPerformanceService` to detect slow queries
-3. Slow queries are analyzed using the AI service
-4. Results are stored in the database and notifications are sent if thresholds are exceeded
-
-### AI Query Analysis
-
-1. Slow queries are sent to Azure OpenAI or Claude
-2. The AI analyzes the query and execution plan
-3. It provides optimization suggestions
-4. These suggestions are stored with the query history
-
-## Development
-
-### Adding a New Monitored Database
-
-1. Add the database connection string to the `MonitoredDatabases` array in `appsettings.json`
-2. Restart the application
-
-### Extending the Solution
-
-- **Custom Notifications**: Implement the `INotificationService` interface
-- **Additional Metrics**: Add new properties to the models and update the services
-- **UI Dashboard**: Build a frontend using the API endpoints
+2. It uses `QueryPerformanceService` to identify slow queries
+3. Slow queries are analyzed using AI via `AIQueryAnalysisService`
+4. Results are stored in the database and notifications are sent
+5. Recommendations can be viewed via the API
 
 ## Security Considerations
 
-- Connection strings and API keys are stored in `appsettings.json`, which is excluded from source control
-- Use environment-specific configuration files for different environments
-- Consider using Azure Key Vault or similar services for production deployments
-- Ensure the SQL Server user has appropriate permissions (read-only where possible)
+- Connection strings and API keys should be stored securely
+- Use Windows Authentication when possible for SQL Server connections
+- Ensure proper access controls for the API endpoints
+- Consider using Azure Key Vault or similar for production deployments
+
+## Development
+
+### Adding New Features
+
+1. Create interfaces in the `Interfaces` folder
+2. Implement services in the `Services` folder
+3. Add API endpoints in the `Controllers` folder
+4. Update dependency injection in `Program.cs`
+
+### Testing
+
+Run the included tests:
+
+```dotnet test
+```
 
 ## License
 

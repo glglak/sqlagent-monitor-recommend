@@ -1,7 +1,8 @@
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
+using SqlMonitor.Interfaces;
 using SqlMonitor.Models;
 
 namespace SqlMonitor.Services
@@ -17,7 +18,12 @@ namespace SqlMonitor.Services
 
         public async Task<IDbConnection> CreateConnectionAsync()
         {
-            var connection = new SqlConnection(_settings.ConnectionString);
+            return await CreateConnectionAsync(_settings.ConnectionString);
+        }
+
+        public async Task<IDbConnection> CreateConnectionAsync(string connectionString)
+        {
+            var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
             return connection;
         }

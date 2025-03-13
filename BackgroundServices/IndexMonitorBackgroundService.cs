@@ -5,8 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SqlMonitor.Interfaces;
 using SqlMonitor.Models;
-using SqlMonitor.Services;
 
 namespace SqlMonitor.BackgroundServices
 {

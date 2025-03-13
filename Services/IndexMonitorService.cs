@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SqlMonitor.Interfaces;
 using SqlMonitor.Models;
 
 namespace SqlMonitor.Services

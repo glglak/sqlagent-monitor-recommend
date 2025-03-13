@@ -1,31 +1,46 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using SqlMonitor.Interfaces;
 using SqlMonitor.Models;
-using SqlMonitor.Services;
+using Microsoft.Extensions.Logging;
 
 namespace SqlMonitor.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Produces("application/json")]
     public class QueryPerformanceController : ControllerBase
     {
         private readonly IQueryPerformanceService _queryPerformanceService;
         private readonly IAIQueryAnalysisService _aiQueryAnalysisService;
+        private readonly ILogger<QueryPerformanceController> _logger;
 
         public QueryPerformanceController(
             IQueryPerformanceService queryPerformanceService,
-            IAIQueryAnalysisService aiQueryAnalysisService)
+            IAIQueryAnalysisService aiQueryAnalysisService,
+            ILogger<QueryPerformanceController> logger)
         {
             _queryPerformanceService = queryPerformanceService;
             _aiQueryAnalysisService = aiQueryAnalysisService;
+            _logger = logger;
         }
 
         [HttpGet("slow-queries/current")]
         public async Task<ActionResult<IEnumerable<SlowQuery>>> GetCurrentSlowQueries(CancellationToken cancellationToken)
         {
+            // Try DMVs first
             var slowQueries = await _queryPerformanceService.GetSlowQueriesAsync(cancellationToken);
+            
+            // If DMVs didn't return any results, try Query Store
+            if (!slowQueries.Any())
+            {
+                _logger.LogInformation("No slow queries found using DMVs, trying Query Store...");
+                slowQueries = await _queryPerformanceService.GetSlowQueriesFromQueryStoreAsync(cancellationToken);
+            }
+            
             return Ok(slowQueries);
         }
 

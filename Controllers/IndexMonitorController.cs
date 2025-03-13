@@ -2,13 +2,17 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using SqlMonitor.Interfaces;
 using SqlMonitor.Models;
-using SqlMonitor.Services;
+using Microsoft.OpenApi.Models;
+using System.IO;
+using System.Reflection;
 
 namespace SqlMonitor.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Produces("application/json")]
     public class IndexMonitorController : ControllerBase
     {
         private readonly IIndexMonitorService _indexMonitorService;
