@@ -1,0 +1,12 @@
+.dashboard-container {
+  margin-top: 20px;
+}
+
+.dashboard-title {
+  margin-bottom: 20px;
+}
+
+.dashboard-card {
+  padding: 16px;
+  height: 100%;
+} 

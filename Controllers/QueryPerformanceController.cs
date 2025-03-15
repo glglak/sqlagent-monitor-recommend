@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SqlMonitor.Interfaces;
 using SqlMonitor.Models;
-using Microsoft.Extensions.Logging;
 
 namespace SqlMonitor.Controllers
 {
@@ -14,56 +14,58 @@ namespace SqlMonitor.Controllers
     [Produces("application/json")]
     public class QueryPerformanceController : ControllerBase
     {
+        private readonly ILogger<QueryPerformanceController> _logger;
         private readonly IQueryPerformanceService _queryPerformanceService;
         private readonly IAIQueryAnalysisService _aiQueryAnalysisService;
-        private readonly ILogger<QueryPerformanceController> _logger;
 
         public QueryPerformanceController(
+            ILogger<QueryPerformanceController> logger,
             IQueryPerformanceService queryPerformanceService,
-            IAIQueryAnalysisService aiQueryAnalysisService,
-            ILogger<QueryPerformanceController> logger)
+            IAIQueryAnalysisService aiQueryAnalysisService)
         {
+            _logger = logger;
             _queryPerformanceService = queryPerformanceService;
             _aiQueryAnalysisService = aiQueryAnalysisService;
-            _logger = logger;
         }
 
-        [HttpGet("slow-queries/current")]
-        public async Task<ActionResult<IEnumerable<SlowQuery>>> GetCurrentSlowQueries(CancellationToken cancellationToken)
+        [HttpGet("{databaseName}/slowqueries")]
+        public async Task<ActionResult<IEnumerable<SlowQuery>>> GetSlowQueries(string databaseName, CancellationToken cancellationToken)
         {
-            // Try DMVs first
-            var slowQueries = await _queryPerformanceService.GetSlowQueriesAsync(cancellationToken);
-            
-            // If DMVs didn't return any results, try Query Store
-            if (!slowQueries.Any())
-            {
-                _logger.LogInformation("No slow queries found using DMVs, trying Query Store...");
-                slowQueries = await _queryPerformanceService.GetSlowQueriesFromQueryStoreAsync(cancellationToken);
-            }
-            
+            _logger.LogInformation("Getting slow queries for database: {DatabaseName}", databaseName);
+            var slowQueries = await _queryPerformanceService.GetSlowQueriesAsync(databaseName, cancellationToken);
             return Ok(slowQueries);
         }
 
-        [HttpGet("slow-queries/history")]
-        public async Task<ActionResult<IEnumerable<SlowQueryHistory>>> GetSlowQueryHistory(
-            [FromQuery] DateTime startDate,
-            [FromQuery] DateTime endDate,
-            CancellationToken cancellationToken)
+        [HttpGet("{databaseName}/history")]
+        public async Task<ActionResult<IEnumerable<SlowQueryHistory>>> GetQueryHistory(string databaseName)
         {
-            var history = await _queryPerformanceService.GetHistoricalSlowQueriesAsync(
-                startDate, 
-                endDate, 
-                cancellationToken);
+            _logger.LogInformation("Getting query history for database: {DatabaseName}", databaseName);
+            var history = await _queryPerformanceService.GetHistoricalSlowQueriesAsync(databaseName);
             return Ok(history);
         }
 
         [HttpPost("analyze")]
-        public async Task<ActionResult<string>> AnalyzeQuery(
-            [FromBody] SlowQuery query, 
-            CancellationToken cancellationToken)
+        public async Task<ActionResult<string>> AnalyzeQuery([FromBody] Models.QueryAnalysisRequest request)
         {
-            var analysis = await _aiQueryAnalysisService.AnalyzeQueryAsync(query, cancellationToken);
-            return Ok(new { Analysis = analysis });
+            _logger.LogInformation("Analyzing query for database: {DatabaseName}", request.DatabaseName);
+            var analysis = await _aiQueryAnalysisService.AnalyzeQueryAsync(request.Query, request.DatabaseName);
+            return Ok(analysis);
+        }
+
+        [HttpPost("{databaseName}/fix/{queryId}")]
+        public async Task<ActionResult<QueryFixResult>> ApplyQueryFix(
+            string databaseName, 
+            string queryId, 
+            [FromQuery] string fixType, 
+            [FromBody] Models.QueryFixRequest request)
+        {
+            _logger.LogInformation("Applying fix {FixType} to query {QueryId} in database {DatabaseName}", 
+                fixType, queryId, databaseName);
+            
+            var result = await _queryPerformanceService.ApplyQueryFixAsync(
+                databaseName, queryId, fixType, request.Query);
+                
+            return Ok(result);
         }
     }
 } 

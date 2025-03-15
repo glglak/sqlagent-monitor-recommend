@@ -26,6 +26,21 @@ namespace SqlMonitor
 
         public void ConfigureServices(IServiceCollection services)
         {
+            // Add CORS configuration
+            services.AddCors(options =>
+            {
+                options.AddPolicy("ReactApp", policy =>
+                {
+                    policy.WithOrigins(
+                            "http://localhost:3000",
+                            "http://localhost:3001",
+                            "http://localhost:3002",
+                            "http://localhost:3003")
+                        .AllowAnyMethod()
+                        .AllowAnyHeader();
+                });
+            });
+            
             // Add configuration
             services.Configure<SqlServerSettings>(Configuration.GetSection("SqlServer"));
             services.Configure<AISettings>(Configuration.GetSection("AI"));
@@ -49,7 +64,14 @@ namespace SqlMonitor
             services.AddHostedService<QueryPerformanceBackgroundService>();
             
             // Add controllers and API endpoints
-            services.AddControllers();
+            services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    // Configure JSON serialization if needed
+                    options.JsonSerializerOptions.PropertyNamingPolicy = null;
+                    options.JsonSerializerOptions.WriteIndented = true;
+                });
+                
             services.AddEndpointsApiExplorer();
             
             // Add Swagger with more detailed configuration
@@ -83,16 +105,27 @@ namespace SqlMonitor
             {
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "SQL Monitor API v1"));
             }
 
-            app.UseHttpsRedirection();
+            // Apply CORS before other middleware
+            app.UseCors("ReactApp");
+
+            // Comment out HTTPS redirection for local development if needed
+            // app.UseHttpsRedirection();
+            
             app.UseRouting();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                
+                // Add a simple health check endpoint
+                endpoints.MapGet("/api/health", async context =>
+                {
+                    await context.Response.WriteAsJsonAsync(new { status = "healthy", message = "API is running" });
+                });
             });
         }
     }

@@ -1,0 +1,3 @@
+@echo off
+echo Starting SQL Monitor Application...
+npm run start:all
